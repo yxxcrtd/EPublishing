@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+       http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
+
+	<bean autowire="no" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<ref bean="licenseTrigger" />
+				<ref bean="alertsTrigger" /><!-- 邮件订阅提醒 -->
+				<ref bean="expirationReminderTrigger" />
+				<ref bean="pDATrigger" />
+				<ref bean="provider" />
+				<ref bean="triggerByDay" /><!-- 图书详情页的同类热销 -->
+				<ref bean="triggerIndexNewest" /><!-- 首页最新资源 -->
+				<ref bean="triggerIndexStat" /><!-- 首页资源总数 -->
+				<ref bean="triggerIndexHotWords" /><!-- 首页检索热词 -->
+				<ref bean="triggerIndexHotReading" /><!-- 首页热读资源 -->
+				<ref bean="triggerEnBookEditor" /><!-- 外文电子书编辑推荐 -->
+				<ref bean="triggerEnHotReading" /><!-- 外文电子书热读资源 -->
+				<ref bean="triggerCnBookEditor" /><!-- 中文电子书编辑推荐 -->
+				<ref bean="triggerCnHotReading" /><!-- 中文电子书热读资源 -->
+				<ref bean="triggerJournalReadable" /><!-- 外文电子期刊可读资源 -->
+				<ref bean="triggerJournalRecommend" /><!-- 外文电子期刊推荐期刊 -->
+				<ref bean="triggerJournalHotReadingArticle" /><!-- 外文电子期刊热读文章 -->
+				<ref bean="triggerJournalPush" /><!-- 中文电子期刊编辑推送 -->
+				<ref bean="triggerJournalHot" /><!-- 中文电子期刊热读资源 -->
+			</list>
+		</property>
+	</bean>
+
+	<bean id="licenseListener" class="cn.digitalpublishing.thread.LicenseListener" scope="singleton"></bean>
+	<bean id="licenseTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="licenseListener" />
+		</property>
+		<property name="targetMethod">
+			<value>licenseHandle</value>
+		</property>
+	</bean>
+	<bean id="licenseTrigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="licenseTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 */10 * * * ?</value><!-- 2分钟一次检查 -->
+		</property>
+	</bean>
+
+	<!-- 订阅提醒 -->
+	<bean id="alertsListener" class="cn.digitalpublishing.thread.AlertsListener" scope="singleton"></bean>
+	<bean id="alertsTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="alertsListener" />
+		</property>
+		<property name="targetMethod">
+			<value>executeAlerts</value>
+		</property>
+	</bean>
+	<bean id="alertsTrigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="alertsTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 1 * * ?</value><!-- 每天凌晨1:00进行一次检查 -->
+		</property>
+	</bean>
+
+	<!-- 续订提醒 -->
+	<bean id="expirationReminderListener" class="cn.digitalpublishing.thread.ExpirationReminderListener" scope="singleton"></bean>
+	<!--定义定时执行searchCommandService 这个bean中的timeTask()方法 -->
+	<bean id="expirationReminderTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="expirationReminderListener" />
+		</property>
+		<property name="targetMethod">
+			<value>executeAlerts</value>
+		</property>
+	</bean>
+	<bean id="expirationReminderTrigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="expirationReminderTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 1 * * ?</value> <!-- 每天凌晨1:00进行一次检查 -->
+		</property>
+	</bean>
+
+	<!-- PDA处理 -->
+	<bean id="pDAListener" class="cn.digitalpublishing.thread.PDAListener" scope="singleton"></bean>
+	<bean id="pDATask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="pDAListener" />
+		</property>
+		<property name="targetMethod">
+			<value>executeHandle</value>
+		</property>
+	</bean>
+	<bean id="pDATrigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="pDATask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 */3 * * * ?</value><!-- 3分钟一次检查 -->
+		</property>
+	</bean>
+
+	<!-- 机构统计 -->
+	<bean id="providerListener" class="cn.digitalpublishing.thread.ProviderStatisticalIndexListener" scope="singleton"></bean>
+	<bean id="pproviderTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="providerListener" />
+		</property>
+		<property name="targetMethod">
+			<value>executeHandle</value>
+		</property>
+	</bean>
+	<bean id="provider" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="pproviderTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0/30 * * * ?</value><!-- 10分钟一次检查 -->
+		</property>
+	</bean>
+
+	<!-- 图书详情页的同类热销 -->
+	<bean id="triggerByDayListener" class="cn.digitalpublishing.thread.TriggerByDayListener" scope="singleton"></bean>
+	<bean id="triggerByDayTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerByDayListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerByDay" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerByDayTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 1 ? * MON-FRI</value>
+		</property>
+	</bean>
+
+	<!-- 首页最新资源 -->
+	<bean id="triggerIndexNewestListener" class="cn.digitalpublishing.thread.TriggerIndexNewestListener" scope="singleton"></bean>
+	<bean id="triggerIndexNewestTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerIndexNewestListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerIndexNewest" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerIndexNewestTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 20 8-18/2 ? * MON-FRI</value>
+		</property>
+	</bean>
+
+	<!-- 首页资源总数 -->
+	<bean id="triggerIndexStatListener" class="cn.digitalpublishing.thread.TriggerIndexStatListener" scope="singleton"></bean>
+	<bean id="triggerIndexStatTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerIndexStatListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerIndexStat" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerIndexStatTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 30 9-19/3 ? * MON-FRI</value>
+		</property>
+	</bean>
+	
+	<!-- 首页检索热词 -->
+	<bean id="triggerIndexHotWordsListener" class="cn.digitalpublishing.thread.TriggerIndexHotWordsListener" scope="singleton"></bean>
+	<bean id="triggerIndexHotWordsTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerIndexHotWordsListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerIndexHotWords" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerIndexHotWordsTask" />
+		</property>
+		<property name="cronExpression">
+		    <!-- 每天6-23点 每隔30分钟 -->
+			<value>0 0/30 6-23 * * ?</value>
+		</property>
+	</bean>	
+
+	<!-- 首页热读资源 -->
+	<bean id="triggerIndexHotReadingListener" class="cn.digitalpublishing.thread.TriggerIndexHotReadingListener" scope="singleton"></bean>
+	<bean id="triggerIndexHotReadingTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerIndexHotReadingListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerIndexHotReading" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerIndexHotReadingTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 2 ? * MON-FRI</value>
+		</property>
+	</bean>
+
+	<!-- 外文电子书编辑推荐资源 -->
+	<bean id="triggerEnBookEditorListener" class="cn.digitalpublishing.thread.TriggerEnBookEditorListener" scope="singleton"></bean>
+	<bean id="triggerEnBookEditorTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerEnBookEditorListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerEnBookEditor" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerEnBookEditorTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 20 ? * MON-FRI</value>
+		</property>
+	</bean>
+
+	<!-- 外文电子书热读资源 -->
+	<bean id="triggerEnHotReadingListener" class="cn.digitalpublishing.thread.TriggerEnHotReadingListener" scope="singleton"></bean>
+	<bean id="triggerEnHotReadingTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerEnHotReadingListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerEnHotReading" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerEnHotReadingTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 22 ? * MON-FRI</value>
+		</property>
+	</bean>
+
+	<!-- 中文电子书编辑推荐资源 -->
+	<bean id="triggerCnBookEditorListener" class="cn.digitalpublishing.thread.TriggerCnBookEditorListener" scope="singleton"></bean>
+	<bean id="triggerCnBookEditorTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerCnBookEditorListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerCnBookEditor" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerCnBookEditorTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 0 ? * MON-FRI</value>
+		</property>
+	</bean>
+
+	<!-- 中文电子书热读资源 -->
+	<bean id="triggerCnHotReadingListener" class="cn.digitalpublishing.thread.TriggerCnHotReadingListener" scope="singleton"></bean>
+	<bean id="triggerCnHotReadingTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerCnHotReadingListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerCnHotReading" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerCnHotReadingTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 1 ? * MON-FRI</value>
+		</property>
+	</bean>
+	
+	<!-- 电子期刊可读资源 -->
+	<bean id="triggerJournalReadableListener" class="cn.digitalpublishing.thread.TriggerJournalReadableListener" scope="singleton"></bean>
+	<bean id="triggerJournalReadableTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerJournalReadableListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerJournalReadable" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerJournalReadableTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 2 ? * MON-FRI</value>
+		</property>
+	</bean>
+	
+	<!-- 电子期刊推荐期刊 -->
+	<bean id="triggerJournalRecommendListener" class="cn.digitalpublishing.thread.TriggerJournalRecommendListener" scope="singleton"></bean>
+	<bean id="triggerJournalRecommendTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerJournalRecommendListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerJournalRecommend" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerJournalRecommendTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 3 ? * MON-FRI</value>
+		</property>
+	</bean>
+	
+	<!-- 电子期刊热读文章 -->
+	<bean id="triggerJournalHotReadingArticleListener" class="cn.digitalpublishing.thread.TriggerJournalHotReadingArticleListener" scope="singleton"></bean>
+	<bean id="triggerJournalHotReadingArticleTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerJournalHotReadingArticleListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerJournalHotReadingArticle" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerJournalHotReadingArticleTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 4 ? * MON-FRI</value>
+		</property>
+	</bean>
+	<!-- 中文电子期刊编辑推送 -->
+	<bean id="triggerJournalPushListener" class="cn.digitalpublishing.thread.TriggerJournalPushListener" scope="singleton"></bean>
+	<bean id="triggerJournalPushTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerJournalPushListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerJournalPush" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerJournalPushTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 5 ? * MON-FRI</value>
+		</property>
+	</bean>
+	<!-- 中文电子期刊热读资源 -->
+	<bean id="triggerJournalHotListener" class="cn.digitalpublishing.thread.TriggerJournalHotListener" scope="singleton"></bean>
+	<bean id="triggerJournalHotTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="triggerJournalHotListener" />
+		</property>
+		<property name="targetMethod">
+			<value>writeRedis</value>
+		</property>
+	</bean>
+	<bean id="triggerJournalHot" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="triggerJournalHotTask" />
+		</property>
+		<property name="cronExpression">
+			<value>0 0 6 ? * MON-FRI</value>
+		</property>
+	</bean>
+</beans>
